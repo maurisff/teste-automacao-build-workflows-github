@@ -10,7 +10,7 @@ app.get('/', (req, res) => {
   res.json({
     version: buildInfo.version,
     lastBuild: buildInfo.lastBuild,
-    message: 'API funcionando com sucesso!'
+    message: 'API funcionando com sucesso - Feature/Teste01!'
   });
 });
 
