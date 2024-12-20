@@ -1,0 +1,36 @@
+# docker stack deploy -c docker-stack.yml teste-automacao-build-workflows-github
+version: '3.7'
+services:
+  teste-automacao-build-workflows-github:
+    image: ghcr.io/maurisff/teste-automacao-build-workflows-github:latest
+    environment:
+      - NODE_ENV=production
+    networks:
+      - proxy-network
+    deploy:
+      mode: replicated
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: any
+      resources:
+        limits:
+          cpus: '0.80'
+          memory: 80M
+        reservations:
+          cpus: '0.30'
+          memory: 40M
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=proxy-network"
+        - "traefik.http.routers.teste-automacao-build-workflows-github.rule=Host(`teste-automacao-build-workflows-github.mschueroff.com.br`)"
+        - "traefik.http.routers.teste-automacao-build-workflows-github.service=teste-automacao-build-workflows-github"
+        - "traefik.http.routers.teste-automacao-build-workflows-github.tls.certresolver=proxy-resolver"
+        - "traefik.http.routers.teste-automacao-build-workflows-github.entrypoints=web,websecure"
+        - "traefik.http.services.teste-automacao-build-workflows-github.loadbalancer.server.port=3000"
+
+networks:
+  proxy-network:
+      external: true

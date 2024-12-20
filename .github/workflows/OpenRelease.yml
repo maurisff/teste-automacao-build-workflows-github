@@ -1,0 +1,96 @@
+name: 1 - Create Release Branch
+run-name: ${{ github.actor }} Started creating release branch for type ${{ github.event.inputs.type }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      type:
+        description: "Tipo de atualização de versão: Major, Minor ou Fix"
+        required: true
+        default: "Fix"
+        type: choice
+        options:
+          - Major
+          - Minor
+          - Fix
+
+jobs:
+  create-version-branch:
+    runs-on: ubuntu-latest
+    if: github.ref_name == github.event.repository.default_branch
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v3
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 14
+
+      - name: Buscar todas as tags
+        run: git fetch --tags
+
+      - name: Determinar a maior tag existente
+        id: get_latest_tag
+        run: |
+          # Captura a maior tag no formato semantic version
+          LATEST_TAG=$(git tag -l --sort=-v:refname | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1)
+          if [ -z "$LATEST_TAG" ]; then
+            LATEST_TAG="0.0.0" # Caso não existam tags, define a base inicial
+          fi
+          echo "Maior tag encontrada: $LATEST_TAG"
+          echo "latest_tag=$LATEST_TAG" >> $GITHUB_ENV
+
+      - name: Incrementar versão com base no tipo selecionado
+        id: increment_version
+        run: |
+          TYPE="${{ github.event.inputs.type }}"
+          VERSION="${{ env.latest_tag }}"
+          MAJOR=$(echo $VERSION | cut -d. -f1)
+          MINOR=$(echo $VERSION | cut -d. -f2)
+          PATCH=$(echo $VERSION | cut -d. -f3)
+
+          case "$TYPE" in
+            Major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            Minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            Fix)
+              PATCH=$((PATCH + 1))
+              ;;
+            *)
+              echo "Erro: Tipo de versão inválido. Escolha Major, Minor ou Fix."
+              exit 1
+              ;;
+          esac
+
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          PREFIX="release/"
+          if [ "$TYPE" = "Fix" ]; then
+            PREFIX="fix/"
+          fi
+          BRANCH_NAME="${PREFIX}${NEW_VERSION}"
+
+          echo "Novo nome da versão: $NEW_VERSION"
+          echo "Nome da nova branch: $BRANCH_NAME"
+          echo "new_version=$NEW_VERSION" >> $GITHUB_ENV
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_ENV
+
+      - name: Criar nova branch
+        run: |
+          git checkout -b ${{ env.branch_name }}
+          npm version ${{ env.new_version }} --no-git-tag-version
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add package.json package-lock.json
+          git commit -m "Created ${{ env.new_version }}"
+          git push origin ${{ env.branch_name }}
+
+      - name: Confirmar nova branch criada
+        run: |
+          echo "Branch criada com sucesso: ${{ env.branch_name }}"

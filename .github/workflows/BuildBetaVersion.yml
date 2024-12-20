@@ -1,0 +1,45 @@
+name: 2 - Build Beta Version
+run-name: ${{ github.actor }} Started build beta version of branche ${{ github.ref_name }}
+on:
+  push:
+    branches:
+      - 'release/[0-9].[0-9].[0-9]'
+      - 'fix/[0-9].[0-9].[0-9]'
+
+jobs:
+  build-beta:
+    if: > 
+      (github.event_name == 'push' &&  github.event.before != 0000000000000000000000000000000000000000 )
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+      - name: Extrair versão da branch de destino
+        id: version
+        run: |
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          VERSION=$(echo $BRANCH_NAME | sed -E 's/^(release|fix)\/([0-9]+\.[0-9]+\.[0-9]+)$/\2/')
+          if [ -z "$VERSION" ]; then
+            echo "Erro: Não foi possível extrair uma versão válida da branch '$BRANCH_NAME'."
+            exit 1
+          fi
+          echo "version=$VERSION" >> $GITHUB_ENV
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Login to DockerHub
+        uses: docker/login-action@v1 
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push
+        id: docker_build
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ghcr.io/${{ github.repository }}:${{ env.version }}-beta
+      - name: Image digest
+        run: echo ${{ steps.docker_build.outputs.digest }}
