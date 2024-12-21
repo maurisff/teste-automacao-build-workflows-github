@@ -1,6 +1,6 @@
 {
   "name": "teste-automacao-build-workflows-github",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Node.js project with TypeScript and Babel",
   "main": "dist/index.js",
   "scripts": {
