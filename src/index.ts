@@ -16,7 +16,7 @@ app.get('/', (req, res) => {
   res.json({
     version: buildInfo.version,
     lastBuild: buildInfo.lastBuild,
-    message: 'API funcionando com sucesso - Feature/Teste01!'
+    message: 'API funcionando com sucesso - 1.1.0!'
   });
 });
 
